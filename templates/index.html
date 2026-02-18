@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onexa Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .chat-container {
+            width: 90%;
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .chat-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .message {
+            margin-bottom: 15px;
+            max-width: 80%;
+        }
+        .message.user {
+            margin-left: auto;
+            text-align: right;
+        }
+        .message-bubble {
+            display: inline-block;
+            padding: 12px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+        .message.bot .message-bubble {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .chat-input {
+            display: flex;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #eee;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 30px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .chat-input input:focus {
+            border-color: #667eea;
+        }
+        .chat-input button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            margin-left: 10px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s;
+        }
+        .chat-input button:hover {
+            transform: scale(1.05);
+        }
+        .chat-input button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .typing {
+            display: none;
+            padding: 10px 20px;
+            color: #999;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>Onexa Assistant</h1>
+            <p>Your AI companion for Onexa services</p>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-bubble">
+                    Hello! I'm your Onexa Assistant. How can I help you today with Onexa courses, enrollment, or support?
+                </div>
+            </div>
+        </div>
+        <div class="typing" id="typing">Onexa Assistant is typing...</div>
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="Type your message..." autocomplete="off">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const typing = document.getElementById('typing');
+
+        userInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        function addMessage(text, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            messageDiv.innerHTML = `<div class="message-bubble">${text}</div>`;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, true);
+            userInput.value = '';
+            typing.style.display = 'block';
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+                typing.style.display = 'none';
+                addMessage(data.reply, false);
+            } catch (error) {
+                typing.style.display = 'none';
+                addMessage('Sorry, I encountered an error. Please try again.', false);
+            }
+        }
+    </script>
+</body>
+</html>
