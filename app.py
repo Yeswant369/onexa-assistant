@@ -22,7 +22,14 @@ def is_onexa_related(message):
         "backend", "frontend", "coding", "programming",
         "software", "developer", "web", "app", "development",
         "join", "start", "begin",
-        "public", "speaking", "duration", "how long"
+        "public", "speaking", "duration", "how long",
+        "tutoring", "grades", "boards", "subjects", 
+        "competetive exam coaching", "jee", "olympiad",
+        "imo", "nso", "physics", "chemistry", "time managenemt",
+        "critical thinking", "music", "art", "dance", "yoga",
+        "sports coaching", "fashion design", "interior design",
+        "ui/ux", "graphic design", "marketing", "social media",
+        "content creation",
     ]
     message = message.lower()
     return any(word in message for word in keywords)
