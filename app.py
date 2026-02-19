@@ -12,27 +12,28 @@ app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
+import re
+
 def is_onexa_related(message):
-    keywords = [
-        "onexa", "course", "iit", "cse", "communication",
-        "google meet", "enroll", "admission", "support",
-        "customer id", "contact", "demo", "mentorship",
-        "pricing", "program", "roadmap", "maths", "physics",
-        "b.tech", "btech", "engineering", "career",
-        "backend", "frontend", "coding", "programming",
-        "software", "developer", "web", "app", "development",
-        "join", "start", "begin",
-        "public", "speaking", "duration", "how long",
-        "tutoring", "grades", "boards", "subjects", 
-        "competetive exam coaching", "jee", "olympiad",
-        "imo", "nso", "physics", "chemistry", "time managenemt",
-        "critical thinking", "music", "art", "dance", "yoga",
-        "sports coaching", "fashion design", "interior design",
-        "ui/ux", "graphic design", "marketing", "social media",
-        "content creation",
-    ]
     message = message.lower()
-    return any(word in message for word in keywords)
+
+    # Extract words from knowledge base dynamically
+    knowledge_words = set(
+        re.findall(r'\b[a-zA-Z]+\b', ONEXA_DATA.lower())
+    )
+
+    # Extract words from user message
+    user_words = set(
+        re.findall(r'\b[a-zA-Z]+\b', message)
+    )
+
+    # Remove very small words
+    knowledge_words = {w for w in knowledge_words if len(w) > 3}
+    user_words = {w for w in user_words if len(w) > 3}
+
+    # Allow if at least one meaningful word overlaps
+    return len(user_words.intersection(knowledge_words)) > 0
+
 
 SYSTEM_PROMPT = f"""
 You are the official Onexa Assistive AI.
@@ -259,7 +260,8 @@ def chat():
 
 if __name__ == "__main__":
     print("🚀 Starting Onexa Assistant...")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 #if __name__ == "__main__":
  #   app.run(debug=True)
