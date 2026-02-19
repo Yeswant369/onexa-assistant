@@ -9,229 +9,83 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
 
+# Configure Gemini
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-def is_onexa_related(message):
-    keywords = [
-        "onexa", "course", "iit", "cse", "communication",
-        "google meet", "enroll", "admission", "support",
-        "customer id", "contact", "demo", "mentorship",
-        "pricing", "program", "roadmap", "maths", "physics",
-        "b.tech", "btech", "engineering", "career",
-        "backend", "frontend", "coding", "programming",
-        "software", "developer", "web", "app", "development",
-        "join", "start", "begin",
-        "public", "speaking", "duration", "how long",
-        "tutoring", "grades", "boards", "subjects", 
-        "competetive exam coaching", "jee", "olympiad",
-        "imo", "nso", "physics", "chemistry", "time managenemt",
-        "critical thinking", "music", "art", "dance", "yoga",
-        "sports coaching", "fashion design", "interior design",
-        "ui/ux", "graphic design", "marketing", "social media",
-        "content creation",
-    ]
-    message = message.lower()
-    return any(word in message for word in keywords)
-
+# -------------------------------
+# STRICT ONEXA CONTEXT PROMPT
+# -------------------------------
 SYSTEM_PROMPT = f"""
 You are the official Onexa Assistive AI.
 
 STRICT RULES:
-1. Answer ONLY Onexa-related queries.
-2. Use ONLY the provided Onexa knowledge.
-3. If unrelated, say:
-"I can assist only with Onexa-related services. Please contact support for further assistance."
-4. If enrollment issue → Ask for Customer ID.
-5. If pricing asked → Suggest consultation call.
-6. If course planning asked → Generate structured roadmap.
-7. Be professional and concise.
+1. Answer ONLY questions related to Onexa programs, services, enrollment, or support.
+2. Use ONLY the knowledge provided below.
+3. If the user asks anything unrelated (general knowledge, personal advice, politics, coding help, etc.),
+   reply EXACTLY with:
+   "I can assist only with Onexa-related services. Please contact support for further assistance."
+4. If pricing is asked → Suggest consultation call.
+5. If enrollment issue → Ask for Customer ID.
+6. Be professional and concise.
+7. Do NOT hallucinate information.
 
 ONEXA KNOWLEDGE:
 {ONEXA_DATA}
 """
 
+# -------------------------------
+# STRICT RELEVANCE CHECK
+# -------------------------------
+def is_onexa_related(message):
+    message = message.lower()
+
+    # Check if at least one meaningful word matches knowledge base
+    knowledge_words = set(
+        word.strip(".,:-").lower()
+        for word in ONEXA_DATA.split()
+        if len(word) > 3
+    )
+
+    user_words = set(
+        word.strip(".,:-").lower()
+        for word in message.split()
+        if len(word) > 3
+    )
+
+    # If intersection exists → related
+    return len(user_words.intersection(knowledge_words)) > 0
+
+
+# -------------------------------
+# ROUTES
+# -------------------------------
 @app.route("/")
 def home():
     session["history"] = []
     return render_template("index.html")
 
-def get_knowledge_response(message):
-    """Fallback response generator based on knowledge base"""
-    message = message.lower()
-    
-    if "c++" in message or "cpp" in message:
-        return """C++ Programming Course
-
-**Current Use Cases of C++:**
-• System/software development (operating systems, compilers)
-• Game development (high-performance graphics)
-• Embedded systems and IoT devices
-• High-frequency trading systems
-• Database management systems
-• Browser development
-
-**Standard Durations:**
-• Beginner Level: 3-4 months (basic syntax, OOP concepts)
-• Intermediate Level: 4-5 months (data structures, STL)
-• Advanced Level: 5-6 months (system design, competitive programming)
-
-**Customizable Duration:**
-The actual course duration can be customized based on:
-• Your current programming experience
-• Weekly time commitment (2-6 hours/week)
-• Specific learning goals (placement prep, projects, etc.)
-
-For a personalized learning plan and exact duration:
-
-📧 Email: support@onexa.com
-📞 Phone: +91-9000000000
-
-Contact us for a free consultation!"""
-    
-    elif "course" in message or "program" in message:
-        return """We offer several programs:
-
-1. IIT Foundation & Advanced Program (6-12 months)
-   • Live Google Meet sessions
-   • Mathematics & Physics focus
-   • Weekly mock tests
-
-2. Computer Science Track (4-6 months)
-   • Python/C++ programming
-   • Data Structures & Algorithms
-   • Real-world projects
-
-3. Communication & Personality Development (3 months)
-   • Public speaking
-   • Interview preparation
-   • Confidence building
-
-Which program interests you?"""
-    
-    elif "enroll" in message or "admission" in message:
-        return """To enroll in Onexa:
-
-• Request a consultation call
-• Academic assessment
-• Personalized roadmap creation
-• Program onboarding
-
-Please provide your Customer ID if you have one, or I can help you start the enrollment process."""
-    
-    elif "price" in message or "pricing" in message or "cost" in message:
-        return "For pricing details, I recommend booking a **consultation call** where we can discuss the best program for your needs and provide customized pricing. Would you like me to help you schedule one?"
-    
-    elif "contact" in message or "support" in message or "help" in message:
-        return """You can reach Onexa support at:
-
-• Email: support@onexa.com
-• Phone: +91-9000000000
-
-For enrollment issues, please provide your Customer ID for faster assistance."""
-    
-    elif "demo" in message or "trial" in message:
-        return "Yes! We offer demo sessions. Please contact our support team at support@onexa.com or +91-9000000000 to schedule a demo."
-    
-    elif "roadmap" in message or "plan" in message:
-        return "I can help create a personalized roadmap for you! First, let me know which program you're interested in (IIT, CSE, or Communication), and I'll generate a structured learning plan."
-    
-    elif "iit" in message or "jee" in message:
-        return """IIT Foundation & Advanced Program
-
-Duration: 6-12 months
-Mode: Live Google Meet
-
-Includes:
-• Concept mastery sessions
-• Weekly mock tests
-• Doubt clearing
-• Personalized mentor guidance
-
-Ideal for: Students preparing for IIT/JEE or those weak in mathematics/physics
-
-Would you like to enroll?"""
-    
-    elif "cse" in message or "coding" in message or "programming" in message or "python" in message:
-        return """Computer Science & Engineering Track
-
-Duration: 4-6 months
-
-Includes:
-• Programming fundamentals (Python/C++)
-• Data Structures & Algorithms
-• Live coding practice
-• Real-world project building
-• Career roadmap guidance
-
-Ideal for: Beginners in coding and students aiming for tech careers
-
-Interested in learning more?"""
-    
-    elif "duration" in message or "time" in message or "how long" in message or "length" in message:
-        return """The course duration depends on your individual requirements and current skill level.
-
-For personalized details about program duration and scheduling:
-
-📧 Email: support@onexa.com
-📞 Phone: +91-9000000000
-
-Contact us for a free consultation where we can assess your needs and recommend the best timeline for you."""
-    
-    elif "communication" in message or "speaking" in message or "interview" in message:
-        return """Communication & Personality Development
-
-Duration: 3 months
-
-Includes:
-• Public speaking training
-• Interview preparation
-• Confidence building
-• Mock interviews with feedback
-
-Ideal for: College students and job aspirants
-
-Ready to improve your communication skills?"""
-    
-    elif "backend" in message or "b.tech" in message or "btech" in message or "engineering" in message:
-        return """Great! Based on your background in B.Tech and interest in backend development, I recommend:
-
-Computer Science & Engineering Track (4-6 months)
-
-This program is perfect for you:
-• Programming fundamentals (Python/C++)
-• Data Structures & Algorithms - essential for backend
-• Live coding practice with real projects
-• Backend system design concepts
-• Career roadmap guidance for software development
-
-As a B.Tech first year student, this will give you a strong foundation and practical skills for backend development careers.
-
-Would you like to:
-• Learn more about the curriculum?
-• Schedule a consultation call?
-• Get enrollment details?"""
-    
-    else:
-        return "I can assist only with Onexa-related services. Please contact support for further assistance."
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    user_input = request.json["message"]
+    user_input = request.json.get("message", "").strip()
 
+    if not user_input:
+        return jsonify({"reply": "Please enter a valid message."})
+
+    # Strict relevance block BEFORE Gemini
     if not is_onexa_related(user_input):
         return jsonify({
             "reply": "I can assist only with Onexa-related services. Please contact support for further assistance."
         })
 
-    # Initialize memory if not exists
+    # Initialize memory
     if "history" not in session:
         session["history"] = []
 
-    # Add user message
     session["history"].append({"role": "user", "content": user_input})
 
-    # Keep last 6 messages only (memory limit)
+    # Keep last 6 messages only
     session["history"] = session["history"][-6:]
 
     try:
@@ -244,22 +98,24 @@ def chat():
             SYSTEM_PROMPT + "\nConversation History:\n" + conversation_context
         )
 
-        bot_reply = response.text
+        bot_reply = response.text.strip()
+
+        # Secondary guard (extra safety)
+        if not is_onexa_related(bot_reply):
+            bot_reply = "I can assist only with Onexa-related services. Please contact support for further assistance."
 
     except Exception as e:
-        # Fallback to knowledge base responses when API fails
-        print(f"API Error: {e}")
-        bot_reply = get_knowledge_response(user_input)
+        print("Gemini API Error:", e)
+        bot_reply = "Currently experiencing technical issues. Please contact support at support@onexa.com."
 
-    # Add bot reply to memory
     session["history"].append({"role": "assistant", "content": bot_reply})
 
     return jsonify({"reply": bot_reply})
 
 
+# -------------------------------
+# PRODUCTION SAFE START
+# -------------------------------
 if __name__ == "__main__":
     print("🚀 Starting Onexa Assistant...")
-    app.run(host="0.0.0.0", port=5000, debug=True)
-
-#if __name__ == "__main__":
- #   app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
