@@ -1,4 +1,5 @@
 import os
+import re
 from flask import Flask, render_template, request, jsonify, session
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -13,53 +14,51 @@ app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-# -------------------------------
-# STRICT ONEXA CONTEXT PROMPT
-# -------------------------------
+
+# -----------------------------------
+# DYNAMIC KNOWLEDGE TOKEN EXTRACTION
+# -----------------------------------
+def extract_knowledge_tokens(text):
+    words = re.findall(r'\b[a-zA-Z]+\b', text.lower())
+    return set(word for word in words if len(word) > 3)
+
+KNOWLEDGE_TOKENS = extract_knowledge_tokens(ONEXA_DATA)
+
+
+# -----------------------------------
+# STRICT RELEVANCE CHECK (DYNAMIC)
+# -----------------------------------
+def is_onexa_related(message):
+    words = re.findall(r'\b[a-zA-Z]+\b', message.lower())
+    words = set(word for word in words if len(word) > 3)
+
+    return len(words.intersection(KNOWLEDGE_TOKENS)) > 0
+
+
+# -----------------------------------
+# STRICT SYSTEM PROMPT
+# -----------------------------------
 SYSTEM_PROMPT = f"""
 You are the official Onexa Assistive AI.
 
 STRICT RULES:
-1. Answer ONLY questions related to Onexa programs, services, enrollment, or support.
-2. Use ONLY the knowledge provided below.
-3. If the user asks anything unrelated (general knowledge, personal advice, politics, coding help, etc.),
-   reply EXACTLY with:
+1. Answer ONLY using the provided ONEXA KNOWLEDGE.
+2. Do NOT add external information.
+3. If user asks anything unrelated to the knowledge below,
+   respond EXACTLY with:
    "I can assist only with Onexa-related services. Please contact support for further assistance."
-4. If pricing is asked → Suggest consultation call.
-5. If enrollment issue → Ask for Customer ID.
-6. Be professional and concise.
-7. Do NOT hallucinate information.
+4. Pricing questions → Suggest consultation call.
+5. Enrollment issue → Ask for Customer ID.
+6. Be professional and structured.
 
 ONEXA KNOWLEDGE:
 {ONEXA_DATA}
 """
 
-# -------------------------------
-# STRICT RELEVANCE CHECK
-# -------------------------------
-def is_onexa_related(message):
-    message = message.lower()
 
-    # Check if at least one meaningful word matches knowledge base
-    knowledge_words = set(
-        word.strip(".,:-").lower()
-        for word in ONEXA_DATA.split()
-        if len(word) > 3
-    )
-
-    user_words = set(
-        word.strip(".,:-").lower()
-        for word in message.split()
-        if len(word) > 3
-    )
-
-    # If intersection exists → related
-    return len(user_words.intersection(knowledge_words)) > 0
-
-
-# -------------------------------
+# -----------------------------------
 # ROUTES
-# -------------------------------
+# -----------------------------------
 @app.route("/")
 def home():
     session["history"] = []
@@ -73,7 +72,7 @@ def chat():
     if not user_input:
         return jsonify({"reply": "Please enter a valid message."})
 
-    # Strict relevance block BEFORE Gemini
+    # STRICT PRE-FILTER
     if not is_onexa_related(user_input):
         return jsonify({
             "reply": "I can assist only with Onexa-related services. Please contact support for further assistance."
@@ -84,12 +83,9 @@ def chat():
         session["history"] = []
 
     session["history"].append({"role": "user", "content": user_input})
-
-    # Keep last 6 messages only
     session["history"] = session["history"][-6:]
 
     try:
-        # Build conversation context
         conversation_context = ""
         for msg in session["history"]:
             conversation_context += f"{msg['role']}: {msg['content']}\n"
@@ -100,7 +96,7 @@ def chat():
 
         bot_reply = response.text.strip()
 
-        # Secondary guard (extra safety)
+        # SECONDARY VALIDATION
         if not is_onexa_related(bot_reply):
             bot_reply = "I can assist only with Onexa-related services. Please contact support for further assistance."
 
@@ -113,9 +109,9 @@ def chat():
     return jsonify({"reply": bot_reply})
 
 
-# -------------------------------
-# PRODUCTION SAFE START
-# -------------------------------
+# -----------------------------------
+# PRODUCTION START
+# -----------------------------------
 if __name__ == "__main__":
     print("🚀 Starting Onexa Assistant...")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
