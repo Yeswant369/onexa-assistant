@@ -1,6 +1,8 @@
 ONEXA_DATA = """
 ABOUT ONEXA:
-Onexa is a personalized ed-tech platform delivering live courses through Google Meet.
+Onexa  -One Stop E-learning Personalized Platform.
+Onexa is a personalized ed-tech platform delivering live courses.
+We provide personalized learning, exam preparation, skill development, and professional courses for students and individuals across all age groups.
 All programs include mentorship, structured roadmaps, and progress tracking.
 
 AVAILABLE PROGRAMS:
