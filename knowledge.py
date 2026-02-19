@@ -76,6 +76,19 @@ ENROLLMENT PROCESS:
 -Social Media
 -Content Creation and etc...
 
+6)Academic Tutoring (Grades 6-12)
+-All boards
+-CBSE
+-ICSE
+-IB
+-IGCSE
+-State board
+Subjects:
+-English
+-Mathematics
+-Science
+-Social studies
+
 
 SUPPORT POLICY:
 - Enrollment issues → Ask for Customer ID
